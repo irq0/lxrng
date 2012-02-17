@@ -47,14 +47,14 @@ sub _to_task {
     my $sth = $$self{'sth'}{'_to_task_ins'} ||=
 	$dbh->prepare(qq{insert into ${pre}filestatus(id_rfile)
 			     select ? where not exists
-			     (select 1 from ${pre}filestatus 
+			     (select 1 from ${pre}filestatus
 			      where id_rfile = ?)});
     $sth->execute($rfile_id, $rfile_id);
 
     $sth = $$self{'sth'}{'_to_task_upd'}{$task} ||=
-	$dbh->prepare(qq{update ${pre}filestatus set $task = 't' 
+	$dbh->prepare(qq{update ${pre}filestatus set $task = 't'
 			     where $task = 'f' and id_rfile = ?});
-    return $sth->execute($rfile_id) > 0;
+    return $sth->execute($rfile_id);
 }
 
 sub to_index {
@@ -81,10 +81,11 @@ sub _get_tree {
     my $dbh = $self->dbh;
     my $pre = $self->prefix;
     my $sth = $$self{'sth'}{'_get_tree'} ||=
-	$dbh->prepare(qq{select id from ${pre}trees where name = ?});
+       $dbh->prepare(qq{select id from ${pre}trees where name = ?});
+
     my $id;
-    if ($sth->execute($tree) > 0) {
-	($id) = $sth->fetchrow_array();
+    if ($sth->execute($tree)) {
+      ($id) = $sth->fetchrow_array();
     }
     $sth->finish();
 
@@ -115,7 +116,7 @@ sub pending_files {
 			      and r.id_tree = ?
 			      and r.is_indexed = 'f')});
 
-    if ($sth->execute($tree_id) > 0) {
+    if ($sth->execute($tree_id)) {
 	return $sth->fetchall_arrayref();
     }
     else {
@@ -133,7 +134,7 @@ sub new_releases_by_file {
 	$dbh->prepare(qq{
 	    select r.release_tag from ${pre}releases r, ${pre}filereleases f
 		where r.id = f.id_release and f.id_rfile = ? and r.is_indexed = 'f'});
-    if ($sth->execute($file_id) > 0) {
+    if ($sth->execute($file_id)) {
 	return [map { $$_[0] } @{$sth->fetchall_arrayref()}];
     }
     else {
@@ -147,7 +148,7 @@ sub update_indexed_releases {
 
     my $tree_id = $self->_get_tree($tree);
     return [] unless $tree_id;
-    
+
     my $dbh = $self->dbh;
     my $pre = $self->prefix;
     my $sth = $$self{'sth'}{'update_indexed_releases_find'} ||=
@@ -164,8 +165,8 @@ sub update_indexed_releases {
 				     or fs.indexed = 'f'
 				     or fs.hashed = 'f'
 				     or fs.referenced = 'f'))});
-    
-    if ($sth->execute() > 0) {
+
+    if ($sth->execute()) {
 	my $rels = $sth->fetchall_arrayref();
 	$sth->finish();
 	$sth = $$self{'sth'}{'update_indexed_releases_set'} ||=
@@ -191,7 +192,7 @@ sub _get_release {
 	$dbh->prepare(qq{select id from ${pre}releases
 			     where id_tree = ? and release_tag = ?});
     my $id;
-    if ($sth->execute($tree_id, $release) > 0) {
+    if ($sth->execute($tree_id, $release)) {
 	($id) = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -207,7 +208,7 @@ sub _get_file {
     my $sth = $$self{'sth'}{'_get_file'} ||=
 	$dbh->prepare(qq{select id from ${pre}files where path = ?});
     my $id;
-    if ($sth->execute($path) > 0) {
+    if ($sth->execute($path)) {
 	($id) = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -217,7 +218,7 @@ sub _get_file {
 
 sub _get_rfile_by_release {
     my ($self, $rel_id, $path) = @_;
-    
+
     my $dbh = $self->dbh;
     my $pre = $self->prefix;
     my $sth = $$self{'sth'}{'_get_rfile_by_release'} ||=
@@ -228,7 +229,7 @@ sub _get_rfile_by_release {
 			     and fr.id_release = ? and f.path = ?});
 
     my $id;
-    if ($sth->execute($rel_id, $path) > 0) {
+    if ($sth->execute($rel_id, $path)) {
 	($id) = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -244,7 +245,7 @@ sub _get_symbol {
     my $sth = $$self{'sth'}{'_get_symbol'} ||=
 	$dbh->prepare(qq{select id from ${pre}symbols where name = ?});
     my $id;
-    if ($sth->execute($symbol) > 0) {
+    if ($sth->execute($symbol)) {
 	($id) = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -281,7 +282,7 @@ sub _symbol_by_id {
 	$dbh->prepare(qq{select * from ${pre}symbols
 			     where id = ?});
     my @res;
-    if ($sth->execute($id) > 0) {
+    if ($sth->execute($id)) {
 	@res = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -300,16 +301,16 @@ sub _identifiers_by_name {
 	    (select i.id, i.type, f.path, i.line, i.id_rfile
 		from ${pre}identifiers i, ${pre}files f,
 			 ${pre}filereleases r, ${pre}revisions v
-		where i.id_rfile = v.id and v.id = r.id_rfile 
-		and r.id_release = ? and v.id_file = f.id 
+		where i.id_rfile = v.id and v.id = r.id_rfile
+		and r.id_release = ? and v.id_file = f.id
 		and i.type != 'm' and i.type != 'l'
 		and i.id_symbol = ? limit 250)
 	    union
 	    (select i.id, i.type, f.path, i.line, i.id_rfile
 		from ${pre}identifiers i, ${pre}files f,
 			 ${pre}filereleases r, ${pre}revisions v
-		where i.id_rfile = v.id and v.id = r.id_rfile 
-		and r.id_release = ? and v.id_file = f.id 
+		where i.id_rfile = v.id and v.id = r.id_rfile
+		and r.id_release = ? and v.id_file = f.id
 		and (i.type = 'm' or i.type = 'l')
 		and i.id_symbol = ? limit 250)});
 
@@ -321,11 +322,11 @@ sub _identifiers_by_name {
 
 sub _symbols_by_file {
     my ($self, $rfile_id) = @_;
-    
+
     my $dbh = $self->dbh;
     my $pre = $self->prefix;
     my $sth = $$self{'sth'}{'_symbols_by_file'} ||=
-	$dbh->prepare(qq{select distinct s.name 
+	$dbh->prepare(qq{select distinct s.name
 			     from ${pre}usage u, ${pre}symbols s
 			     where id_rfile = ? and u.id_symbol = s.id});
     $sth->execute($rfile_id);
@@ -360,7 +361,7 @@ sub _rfile_path_by_id {
 	$dbh->prepare(qq{select f.path from ${pre}files f, ${pre}revisions r
 			     where f.id = r.id_file and r.id = ?});
     my $path;
-    if ($sth->execute($rfile_id) > 0) {
+    if ($sth->execute($rfile_id)) {
 	($path) = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -384,7 +385,7 @@ sub _get_includes_by_file {
 
 	unless ($sth) {
 	    my $placeholders = join(', ', ('?') x @rfile_batch);
-	    $sth = $dbh->prepare(qq{select rf.id, f.path 
+	    $sth = $dbh->prepare(qq{select rf.id, f.path
 					from ${pre}revisions rf,
 					${pre}filereleases v,
 					${pre}includes i,
@@ -438,7 +439,7 @@ sub get_hashed_document {
 	$dbh->prepare(qq{select doc_id from ${pre}hashed_documents
 			     where id_rfile = ?});
     my $doc_id;
-    if ($sth->execute($rfile_id) > 0) {
+    if ($sth->execute($rfile_id)) {
 	($doc_id) = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -471,7 +472,7 @@ sub get_symbol_usage {
 
     my %rlines;
     foreach my $r (@$res) {
-	$rlines{$$r[0]} = ref($$r[1]) eq 'ARRAY' 
+	$rlines{$$r[0]} = ref($$r[1]) eq 'ARRAY'
 	    ? $$r[1] : [$$r[1] =~ /(\d+),?/g];
     }
 
@@ -492,10 +493,11 @@ sub get_identifier_info {
 	        left outer join ${pre}identifiers c on i.context = c.id
 		left outer join ${pre}symbols cs on c.id_symbol = cs.id,
 		${pre}symbols s, ${pre}revisions r, ${pre}files f
-		where i.id = ? and i.id_symbol = s.id 
+		where i.id = ? and i.id_symbol = s.id
 		and i.id_rfile = r.id and r.id_file = f.id});
 
-    unless ($sth->execute($ident) == 1) {
+
+    unless ($sth->execute($ident)) {
 	return undef;
     }
 
@@ -516,7 +518,7 @@ sub get_identifier_info {
 	$reflines{$p} = $l;
     }
 
-    return ($symname, $symid, 
+    return ($symname, $symid,
 	    [$iid, $type, $path, $line, $cname, $ctype, $cid, $rfile_id],
 	    \%reflines);
 }
@@ -530,9 +532,9 @@ sub set_rfile_charset {
 	$dbh->prepare(qq{
 	    update ${pre}revisions
 		set body_charset = (select id from ${pre}charsets
-				    where name = ?) 
+				    where name = ?)
 		where id = ?});
-    
+
     return $sth->execute($charset, $rfile_id);
 }
 
@@ -545,13 +547,13 @@ sub get_file_charset {
     return undef unless $rel_id;
     my $rfile_id = $self->_get_rfile_by_release($rel_id, $path);
     return undef unless $rfile_id;
-    
+
     my $sth = $$self{'sth'}{'get_file_charset'} ||=
 	$dbh->prepare(qq{select c.name
 	    from ${pre}revisions r, ${pre}charsets c
 	    where r.id = ? and r.body_charset = c.id});
     my $charset;
-    if ($sth->execute($rfile_id) > 0) {
+    if ($sth->execute($rfile_id)) {
 	($charset) = $sth->fetchrow_array();
     }
     $sth->finish();
@@ -568,7 +570,7 @@ sub get_rfile_timestamp {
 	    select extract(epoch from last_modified_gmt)::integer,
 	    last_modified_tz
 		from ${pre}revisions where id = ?});
-    
+
     unless ($sth->execute($rfile_id) == 1) {
 	return undef;
     }
@@ -577,13 +579,13 @@ sub get_rfile_timestamp {
     $sth->finish();
 
     return ($epoch, $tz);
-}    
+}
 
 sub files_by_wildcard {
     my ($self, $tree, $release, $query) = @_;
 
     return [] unless $query =~ /[a-zA-Z0-9]/;
-    
+
     my $rel_id = $self->release_id($tree, $release);
     return [] unless $rel_id;
 
