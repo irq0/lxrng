@@ -1,7 +1,7 @@
 # -*- mode: perl -*-
 # Configuration file
 #
-# 
+#
 
 use LXRng::Index::PgBatch;
 use LXRng::Repo::Git;
@@ -12,7 +12,8 @@ my $gitrepo = LXRng::Repo::Git
 	  release_re => qr/^v[^-]*$/,
 	  author_timestamp => 0);
 
-my $index   = LXRng::Index::PgBatch->new(db_spec => 'dbname=lxrng;port=5432', 
+#my $index   = LXRng::Index::Sqlite->new(db_file => '/tmp/lxr.sqlite3');
+my $index   = LXRng::Index::PgBatch->new(db_spec => 'dbname=lxrng;port=5432',
 					 db_user => "", db_pass => "",
 					 # table_prefix => 'lxr'
 					 );
@@ -38,7 +39,7 @@ return {
 
 	'ver_default' => 'v2.6.20.3',
 
-	'include_maps' => 
+	'include_maps' =>
 	    [
 	     [qr|^arch/(.*?)/|, qr|^asm/(.*)|,
 	      sub { "include/asm-$_[0]/$_[1]" }],
