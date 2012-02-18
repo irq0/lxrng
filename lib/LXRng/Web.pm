@@ -31,7 +31,7 @@ use Subst::Complex;
 
 use Template;
 use IO::Handle;
-use Digest::SHA1 qw(sha1_hex);
+use Digest::SHA qw(sha1_hex);
 use CGI::Ajax;
 use File::Temp qw(tempdir tempfile);
 use File::Path qw(mkpath);
@@ -135,7 +135,7 @@ sub print_markedup_file {
     my $handle = $node->handle();
     LXRng::Lang->init($context);
     my $index = $context->config->{'index'};
-    my $charset = $index->get_file_charset($context->tree, $node->name, 
+    my $charset = $index->get_file_charset($context->tree, $node->name,
 					   $context->release);
     $charset ||= 'ascii';
 
@@ -210,7 +210,7 @@ sub print_error {
 			'base_url' => $base,
 			'error' => $error})
 	or die $template->error();
-}    
+}
 
 sub print_tree_list {
     my ($context, $template) = @_;
@@ -365,7 +365,7 @@ sub source {
 			    'is_dir' => 0},
 			   \$html)
 	    or die $template->error();
-	
+
 	# Template directives in processed template.  Sigh.  TT2 sadly
 	# can't do progressive rendering of its templates, so we cheat...
 	my ($pre, $post) = split('<!--FILE_CONTENT-->', $html);
@@ -425,7 +425,7 @@ sub search {
 					  'files' => $res};
 	}
 	if ($type eq 'code' or $type eq 'search') {
-	    my $result = $index->identifiers_by_name($context->tree, 
+	    my $result = $index->identifiers_by_name($context->tree,
 						     $ver, $find);
 	    my @cooked = (map { $$_[1] = ucfirst($LXRng::Lang::deftypes{$$_[1]});
 				$_ }
@@ -511,7 +511,7 @@ sub search_result {
 sub handle_ajax_request {
     my ($query, $context, $template) = @_;
     my $gzip = do_compress_response($query);
-    
+
     # $query->no_cache(1); FIXME -- not available with CGI.pm.
     my %headers = (-type => 'text/html',
 		   -charset => 'utf-8');
@@ -530,17 +530,17 @@ sub handle_ajax_request {
 	my $rep = $context->config->{'repository'};
 	my $node = $rep->node($context->param('file'), $context->release);
 	print_markedup_file($context, $template, $node);
-	
+
     }
     elsif ($context->param('fname') eq 'pjx_load_fragment') {
 	my $shaid = $context->param('frag');
-	return unless $shaid =~ 
+	return unless $shaid =~
 	    m|^[0-9a-z]{2}/[0-9a-z]{2}/[0-9a-z]{36}_\d+/[0-9]+$|;
 	return unless exists $context->config->{'cache'};
 	my $cfile = $context->config->{'cache'}.'/'.$shaid;
 	return unless -e $cfile;
 	open(my $cache, '<', $cfile) or return;
-	
+
 	print($shaid.'|');
 	my $buf;
 	while (read($cache, $buf, 16384) > 0) {
@@ -589,7 +589,7 @@ sub handle_preferences {
 	else {
 	    $template_args{'return'} = $context->base_url(1);
 	}
-	
+
 	$template->process('prefs_set.tt2',
 			   \%template_args)
 	    or die $template->error();
@@ -601,7 +601,7 @@ sub handle_preferences {
 	my $nav = 'is_replace';
 	$nav = 'is_'.$context->prefs->{'navmethod'} if
 	    $context->prefs and $context->prefs->{'navmethod'} ne '';
-	
+
 	my $ret = $context->base_url();
 	$ret =~ s,[+]prefs/?,,;
 	$ret .= $query->param('return') if $query->param('return');
@@ -676,7 +676,7 @@ sub generate_pdf {
 
     while (1) {
 	my ($btype, $frag) = $parse->nextfrag;
-	
+
 	last unless defined $frag;
 
 	$btype ||= 'code';
@@ -775,7 +775,7 @@ sub generate_pdf {
 
     my $pathdesc = $context->tree."/$path ($ver)";
     $pathdesc =~ s/([$tspecials])/$tspecials{$1}/ge;
-    
+
     my ($texh, $texname) = tempfile(DIR => $tempdir, SUFFIX => '.tex');
 
     $template->process('print_pdf.tt2',
@@ -858,7 +858,7 @@ sub handle {
     if ($context->param('fname')) {
 	handle_ajax_request($query, $context, $template);
     }
-    else {	
+    else {
 	if ($context->path =~ /^[+ ]prefs$/) {
 	    handle_preferences($query, $context, $template);
 	}
@@ -869,7 +869,7 @@ sub handle {
 	    generate_raw($query, $context, $template, $1);
 	}
 	else {
-	    if ($context->path =~ 
+	    if ($context->path =~
 		/^[+ ](search|code|ident|file|text|ambig)(?:=(.*)|)/)
 	    {
 		my $qstring = $2 || $context->param('search');
